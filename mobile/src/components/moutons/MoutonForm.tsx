@@ -4,6 +4,7 @@ import { Mouton, Species } from '../../types';
 import { createMouton, updateMouton } from '../../services/moutonService';
 import { logActivity } from '../../services/activityService';
 import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../context/AppContext';
 import { compressImage } from '../../utils/imageUtils';
 import { SPECIES_LABELS, SPECIES_EMOJIS } from '../../utils/species';
 
@@ -13,6 +14,7 @@ interface Props { mouton?: Mouton; onSave: () => void; onCancel: () => void }
 
 export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
   const { currentUser } = useAuth();
+  const { simplified } = useApp();
   const today = new Date().toISOString().split('T')[0];
   const [form, setForm] = useState({
     identification_number: m?.identification_number ?? '',
@@ -256,8 +258,8 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
           <textarea className="input mt-1 resize-none" rows={3} value={form.observations} onChange={set('observations')} placeholder="Notes…" />
         </label>
 
-        <button onClick={handleSave} disabled={saving} className="btn-primary mt-2">
-          <Save size={20} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
+        <button onClick={handleSave} disabled={saving} className="btn-primary mt-2 simplified:py-5 simplified:text-xl">
+          <Save size={simplified ? 26 : 20} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </div>
     </div>

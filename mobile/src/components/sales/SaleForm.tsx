@@ -5,6 +5,7 @@ import { createSale, updateSale } from '../../services/saleService';
 import { getMoutons, getMoutonByIdAny } from '../../services/moutonService';
 import { logActivity } from '../../services/activityService';
 import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../context/AppContext';
 import { formatAnimalLabel } from '../../utils/species';
 
 interface Props { sale?: Sale; onSave: () => void; onCancel: () => void }
@@ -17,6 +18,7 @@ const TARGET_TYPES = [
 
 export function SaleForm({ sale, onSave, onCancel }: Props) {
   const { currentUser } = useAuth();
+  const { simplified } = useApp();
   const today = new Date().toISOString().split('T')[0];
   const [moutons, setMoutons] = useState<Mouton[]>([]);
   const [form, setForm] = useState({
@@ -176,8 +178,8 @@ export function SaleForm({ sale, onSave, onCancel }: Props) {
           <textarea className="input mt-1 resize-none" rows={2} value={form.notes} onChange={set('notes')} placeholder="Remarques…" />
         </label>
 
-        <button onClick={handleSave} disabled={saving} className="btn-primary mt-2">
-          <Save size={20} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
+        <button onClick={handleSave} disabled={saving} className="btn-primary mt-2 simplified:py-5 simplified:text-xl">
+          <Save size={simplified ? 26 : 20} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </div>
     </div>

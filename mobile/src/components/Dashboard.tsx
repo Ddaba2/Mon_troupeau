@@ -10,6 +10,7 @@ import { query } from '../db/DatabaseService';
 import { HealthRecord, Sale, ActivityLog as ActivityLogEntry, Species } from '../types';
 import { isAdult } from './moutons/MoutonsList';
 import { SPECIES_LABELS, getEntityIcon } from '../utils/species';
+import { speak } from '../utils/voice';
 
 function MiniStat({ label, value, icon: Icon, color }: {
   label: string; value: string | number; icon: React.ElementType; color: string;
@@ -38,7 +39,7 @@ function BlocCard({ title, icon: Icon, children }: { title: string; icon: React.
 }
 
 export function Dashboard() {
-  const { stats, refreshStats, setActiveTab } = useApp();
+  const { stats, refreshStats, setActiveTab, simplified } = useApp();
   const { canSell, canAdd } = usePermissions();
 
   const [alerts, setAlerts]               = useState<HealthRecord[]>([]);
@@ -240,11 +241,11 @@ export function Dashboard() {
             {quickActions.map(({ label, tab, icon: Icon, color }) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 p-3 rounded-xl ${color} active:scale-95 transition-transform`}
+                onClick={() => { if (simplified) speak(label); setActiveTab(tab); }}
+                className={`flex items-center gap-2 p-3 simplified:p-5 rounded-xl ${color} active:scale-95 transition-transform`}
               >
-                <Icon size={16} />
-                <span className="text-xs font-medium">{label}</span>
+                <Icon size={simplified ? 24 : 16} />
+                <span className="text-xs simplified:text-sm font-medium">{label}</span>
               </button>
             ))}
           </div>

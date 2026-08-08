@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { logActivity } from '../../services/activityService';
 import { downloadSaleReceipt } from '../../utils/exportUtils';
+import { speak } from '../../utils/voice';
 
 export const TARGET_LABELS: Record<string, string> = {
   mouton: '🐾 Animal',
@@ -46,7 +47,7 @@ export function SalesList() {
   const [filterType, setFilterType]   = useState<string>('tout');
   const [filterPay, setFilterPay]     = useState<string>('tout');
   const [loading, setLoading]         = useState(true);
-  const { refreshStats }              = useApp();
+  const { refreshStats, simplified }  = useApp();
   const { currentUser }               = useAuth();
   const { canSell, canDelete }        = usePermissions();
 
@@ -124,8 +125,11 @@ export function SalesList() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Ventes</h2>
         {canSell && (
-          <button onClick={() => setShowForm(true)} className="bg-primary-600 text-white rounded-full p-3 shadow-lg active:scale-95 transition-transform">
-            <Plus size={22} />
+          <button
+            onClick={() => { if (simplified) speak('Enregistrer une vente'); setShowForm(true); }}
+            className="bg-primary-600 text-white rounded-full p-3 simplified:p-4 shadow-lg active:scale-95 transition-transform"
+          >
+            <Plus size={simplified ? 30 : 22} />
           </button>
         )}
       </div>
@@ -240,7 +244,10 @@ export function SalesList() {
           <ShoppingCart size={56} className="mx-auto text-gray-200 mb-4" />
           <p className="text-gray-400 mb-6">{search || activeFilters > 0 ? 'Aucun résultat' : 'Aucune vente enregistrée'}</p>
           {!search && !activeFilters && (
-            <button onClick={() => setShowForm(true)} className="bg-primary-600 text-white px-8 py-3 rounded-full font-semibold">
+            <button
+              onClick={() => { if (simplified) speak('Enregistrer une vente'); setShowForm(true); }}
+              className="bg-primary-600 text-white px-8 py-3 simplified:py-4 simplified:text-lg rounded-full font-semibold"
+            >
               Enregistrer une vente
             </button>
           )}

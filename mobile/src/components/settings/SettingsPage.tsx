@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Moon, Sun, Download, FileJson, LogOut, Trash2, Users, ClipboardList, Info, ChevronRight, ChevronDown, Wifi, Bell, Upload } from 'lucide-react';
+import { Settings, Moon, Sun, Download, FileJson, LogOut, Trash2, Users, ClipboardList, Info, ChevronRight, ChevronDown, Wifi, Bell, Upload, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -22,7 +22,7 @@ import { areHealthRemindersEnabled, setHealthRemindersEnabled } from '../../serv
 type AdminSection = 'users' | 'activity' | 'trash' | null;
 
 export function SettingsPage() {
-  const { isDark, toggleDark, stats } = useApp();
+  const { isDark, toggleDark, simplified, toggleSimplified, stats } = useApp();
   const { currentUser, farmMode, farmName, setFarmName, logout } = useAuth();
   const { isAdmin, isGerant, canExport, canManageUsers, canDelete } = usePermissions();
   const [adminSection, setAdminSection] = useState<AdminSection>(null);
@@ -253,6 +253,26 @@ export function SettingsPage() {
           </div>
           <div className={`w-11 h-6 rounded-full transition-colors relative ${isDark ? 'bg-primary-600' : 'bg-gray-200'}`}>
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isDark ? 'translate-x-6' : 'translate-x-1'}`} />
+          </div>
+        </button>
+      </div>
+
+      {/* Accessibilité */}
+      <div className="card">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Accessibilité</p>
+        <button
+          onClick={toggleSimplified}
+          className="w-full flex items-center justify-between py-2"
+        >
+          <div className="flex items-center gap-3">
+            <Eye size={18} className="text-primary-600" />
+            <div className="text-left">
+              <span className="text-sm text-gray-700 dark:text-gray-300 block">Mode simplifié</span>
+              <span className="text-xs text-gray-400">Gros pictogrammes, moins de texte, lecture à voix haute des boutons</span>
+            </div>
+          </div>
+          <div className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${simplified ? 'bg-primary-600' : 'bg-gray-200'}`}>
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${simplified ? 'translate-x-6' : 'translate-x-1'}`} />
           </div>
         </button>
       </div>

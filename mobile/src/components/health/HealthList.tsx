@@ -9,6 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../services/activityService';
 import { getMoutons } from '../../services/moutonService';
 import { formatAnimalLabel } from '../../utils/species';
+import { useApp } from '../../context/AppContext';
+import { speak } from '../../utils/voice';
 
 const TYPE_COLORS: Record<string, string> = {
   vaccination:  'bg-blue-100 text-blue-700',
@@ -55,6 +57,7 @@ export function HealthList() {
   const [loading, setLoading]     = useState(true);
   const { currentUser }           = useAuth();
   const { canEdit, canDelete }    = usePermissions();
+  const { simplified }            = useApp();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,8 +114,11 @@ export function HealthList() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Suivi sanitaire</h2>
         {canEdit && (
-          <button onClick={() => setShowForm(true)} className="bg-primary-600 text-white rounded-full p-3 shadow-lg active:scale-95 transition-transform">
-            <Plus size={22} />
+          <button
+            onClick={() => { if (simplified) speak('Ajouter un soin'); setShowForm(true); }}
+            className="bg-primary-600 text-white rounded-full p-3 simplified:p-4 shadow-lg active:scale-95 transition-transform"
+          >
+            <Plus size={simplified ? 30 : 22} />
           </button>
         )}
       </div>
@@ -218,7 +224,10 @@ export function HealthList() {
           <Heart size={56} className="mx-auto text-gray-200 mb-4" />
           <p className="text-gray-400 mb-6">{search || activeFilters > 0 ? 'Aucun résultat' : 'Aucun soin enregistré'}</p>
           {!search && !activeFilters && (
-            <button onClick={() => setShowForm(true)} className="bg-primary-600 text-white px-8 py-3 rounded-full font-semibold">
+            <button
+              onClick={() => { if (simplified) speak('Ajouter un soin'); setShowForm(true); }}
+              className="bg-primary-600 text-white px-8 py-3 simplified:py-4 simplified:text-lg rounded-full font-semibold"
+            >
               Enregistrer un soin
             </button>
           )}

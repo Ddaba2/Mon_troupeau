@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Home, Users, Heart, BarChart3, Settings, Wallet, MoreHorizontal, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { speak } from '../../utils/voice';
 
 const MAX_VISIBLE = 5;
 
@@ -15,7 +16,7 @@ const ALL_TABS = [
 ];
 
 export function BottomNav() {
-  const { activeTab, setActiveTab } = useApp();
+  const { activeTab, setActiveTab, simplified } = useApp();
   const { canViewStats } = usePermissions();
   const [moreOpen, setMoreOpen] = useState(false);
   const currentMainTab = activeTab.split('/')[0];
@@ -31,7 +32,8 @@ export function BottomNav() {
   const showMore    = overflowTabs.length > 0;
   const isOverflowActive = overflowTabs.some(t => t.id === currentMainTab);
 
-  const handleSelect = (id: string) => {
+  const handleSelect = (id: string, label: string) => {
+    if (simplified) speak(label);
     setActiveTab(id);
     setMoreOpen(false);
   };
@@ -58,15 +60,15 @@ export function BottomNav() {
               {overflowTabs.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
-                  onClick={() => handleSelect(id)}
+                  onClick={() => handleSelect(id, label)}
                   className={`flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-2xl transition-colors ${
                     currentMainTab === id
                       ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600'
                       : 'text-gray-500 dark:text-gray-400 active:bg-gray-50 dark:active:bg-gray-800'
                   }`}
                 >
-                  <Icon size={22} strokeWidth={currentMainTab === id ? 2.5 : 1.8} />
-                  <span className="text-[10px] font-medium leading-none">{label}</span>
+                  <Icon size={simplified ? 30 : 22} strokeWidth={currentMainTab === id ? 2.5 : 1.8} />
+                  <span className="text-[10px] simplified:text-xs font-medium leading-none">{label}</span>
                 </button>
               ))}
             </div>
@@ -82,29 +84,29 @@ export function BottomNav() {
           {mainTabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => handleSelect(id)}
+              onClick={() => handleSelect(id, label)}
               className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
                 currentMainTab === id
                   ? 'text-primary-600'
                   : 'text-gray-400 dark:text-gray-500'
               }`}
             >
-              <Icon size={18} strokeWidth={currentMainTab === id ? 2.5 : 1.5} />
-              <span className="text-[9px] font-medium leading-none">{label}</span>
+              <Icon size={simplified ? 26 : 18} strokeWidth={currentMainTab === id ? 2.5 : 1.5} />
+              <span className="text-[9px] simplified:text-xs font-medium leading-none">{label}</span>
             </button>
           ))}
 
           {showMore && (
             <button
-              onClick={() => setMoreOpen(p => !p)}
+              onClick={() => { if (simplified) speak('Plus'); setMoreOpen(p => !p); }}
               className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
                 isOverflowActive || moreOpen
                   ? 'text-primary-600'
                   : 'text-gray-400 dark:text-gray-500'
               }`}
             >
-              <MoreHorizontal size={18} strokeWidth={1.5} />
-              <span className="text-[9px] font-medium leading-none">Plus</span>
+              <MoreHorizontal size={simplified ? 26 : 18} strokeWidth={1.5} />
+              <span className="text-[9px] simplified:text-xs font-medium leading-none">Plus</span>
             </button>
           )}
         </div>

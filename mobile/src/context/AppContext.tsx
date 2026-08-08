@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { AppStats } from '../types';
 import { query } from '../db/DatabaseService';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useSimplifiedMode } from '../hooks/useSimplifiedMode';
 
 interface CountRow { count: number }
 interface SalesRow { count: number; total: number }
@@ -14,6 +15,8 @@ interface AppContextType {
   setActiveTab: (tab: string) => void;
   isDark: boolean;
   toggleDark: () => void;
+  simplified: boolean;
+  toggleSimplified: () => void;
   // Permet à la recherche globale d'ouvrir directement la fiche d'un mouton
   // précis depuis n'importe quel écran.
   pendingMoutonId: number | null;
@@ -39,6 +42,8 @@ const AppContext = createContext<AppContextType>({
   setActiveTab: () => {},
   isDark: false,
   toggleDark: () => {},
+  simplified: false,
+  toggleSimplified: () => {},
   pendingMoutonId: null,
   setPendingMoutonId: () => {},
 });
@@ -48,6 +53,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [pendingMoutonId, setPendingMoutonId] = useState<number | null>(null);
   const { isDark, toggleDark } = useDarkMode();
+  const { simplified, toggleSimplified } = useSimplifiedMode();
 
   const refreshStats = useCallback(async () => {
     try {
@@ -86,7 +92,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { refreshStats(); }, [refreshStats]);
 
   return (
-    <AppContext.Provider value={{ stats, refreshStats, activeTab, setActiveTab, isDark, toggleDark, pendingMoutonId, setPendingMoutonId }}>
+    <AppContext.Provider value={{ stats, refreshStats, activeTab, setActiveTab, isDark, toggleDark, simplified, toggleSimplified, pendingMoutonId, setPendingMoutonId }}>
       {children}
     </AppContext.Provider>
   );
