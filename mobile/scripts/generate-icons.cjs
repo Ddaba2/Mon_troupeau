@@ -45,7 +45,8 @@ async function main() {
     const dest = path.join(ANDROID_RES, dir);
     fs.mkdirSync(dest, { recursive: true });
 
-    const logoSize = Math.round(size * 0.7);
+    // 0.6 ≈ zone de sécurité 66dp/108dp des icônes adaptatives Android : évite le rognage sur les launchers non circulaires (squircle, teardrop...)
+    const logoSize = Math.round(size * 0.6);
     const logo = img.clone().resize({ w: logoSize, h: logoSize });
     const x = Math.round((size - logo.width) / 2);
     const y = Math.round((size - logo.height) / 2);

@@ -155,7 +155,6 @@ Après toute modification touchant `android/` ou `capacitor.config.ts`, relancer
 
 ## Points connus / limites
 
-- **Logo et icônes** : `public/logo.png`, les icônes de lancement (`android/app/src/main/res/mipmap-*`) et les écrans de démarrage (`drawable*/splash.png`) affichent encore le pigeon de l'application d'origine — un nouveau visuel "mouton" reste à fournir/générer.
 - **Notifications locales** : non implémentées par Capacitor sur le web ; à tester sur un appareil ou émulateur Android réel.
 - **Taille du bundle** : le build Vite signale un chunk JS > 500 Ko (jsPDF + html2canvas essentiellement) — sans impact fonctionnel, un découpage en `manualChunks` pourrait être envisagé si le temps de chargement devient un problème.
 - **Mode solo** : un seul compte "Admin" fictif (id `0`) est utilisé, sans PIN — adapté à un éleveur seul qui ne souhaite pas de connexion à chaque ouverture.

@@ -52,7 +52,7 @@ export async function advanceOverdueRecurrences(): Promise<void> {
   );
   for (const r of overdue) {
     if (!r.next_due || !r.recurrence_months) continue;
-    let next = new Date(r.next_due);
+    const next = new Date(r.next_due);
     // Avance par paliers jusqu'à retomber sur une échéance future (couvre le
     // cas d'une app restée fermée plusieurs cycles).
     while (next.toISOString().split('T')[0] < today) {
