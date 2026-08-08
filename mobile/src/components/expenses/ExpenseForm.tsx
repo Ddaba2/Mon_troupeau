@@ -6,7 +6,7 @@ import { logActivity } from '../../services/activityService';
 import { useAuth } from '../../context/AuthContext';
 
 const CATEGORIES: { value: ExpenseCategory; label: string }[] = [
-  { value: 'achat_moutons', label: 'Achat de moutons' },
+  { value: 'achat_moutons', label: "Achat d'animaux" },
   { value: 'alimentation',  label: 'Alimentation' },
   { value: 'medicaments',   label: 'Médicaments' },
   { value: 'transport',     label: 'Transport' },

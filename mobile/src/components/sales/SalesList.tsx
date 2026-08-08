@@ -10,7 +10,7 @@ import { logActivity } from '../../services/activityService';
 import { downloadSaleReceipt } from '../../utils/exportUtils';
 
 export const TARGET_LABELS: Record<string, string> = {
-  mouton: '🐑 Mouton',
+  mouton: '🐾 Animal',
   fumier: '🌾 Fumier',
   autre:  '— Autre revenu',
 };

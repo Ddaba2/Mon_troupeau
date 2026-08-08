@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Heart, Search, AlertTriangle, ChevronDown } from 'lucide-react';
-import { HealthRecord } from '../../types';
+import { HealthRecord, Mouton } from '../../types';
 import { getHealthRecords, trashHealthRecord, advanceOverdueRecurrences } from '../../services/healthService';
 import { scheduleHealthReminders } from '../../services/notificationService';
 import { HealthForm } from './HealthForm';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../context/AuthContext';
 import { logActivity } from '../../services/activityService';
+import { getMoutons } from '../../services/moutonService';
+import { formatAnimalLabel } from '../../utils/species';
 
 const TYPE_COLORS: Record<string, string> = {
   vaccination:  'bg-blue-100 text-blue-700',
@@ -42,6 +44,7 @@ function getDateLimit(range: DateRange): string | null {
 
 export function HealthList() {
   const [records, setRecords]     = useState<HealthRecord[]>([]);
+  const [moutons, setMoutons]     = useState<Mouton[]>([]);
   const [editing, setEditing]     = useState<HealthRecord | null>(null);
   const [showForm, setShowForm]   = useState(false);
   const [search, setSearch]       = useState('');
@@ -56,10 +59,14 @@ export function HealthList() {
   const load = useCallback(async () => {
     setLoading(true);
     await advanceOverdueRecurrences().catch(() => {});
-    setRecords(await getHealthRecords());
+    const [health, animals] = await Promise.all([getHealthRecords(), getMoutons()]);
+    setRecords(health);
+    setMoutons(animals);
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const animalLabels = new Map(moutons.map(m => [m.id, formatAnimalLabel(m)]));
 
   const today = new Date().toISOString().split('T')[0];
   const overdue = records.filter(r => r.next_due && r.next_due < today);
@@ -233,7 +240,7 @@ export function HealthList() {
                       <span>{new Date(r.date).toLocaleDateString('fr-FR')}</span>
                       {r.quantity && <span>Qté : {r.quantity}</span>}
                       {r.cost != null && <span>Coût : {r.cost.toLocaleString('fr-FR')} FCFA</span>}
-                      <span>Cible : {r.target_type === 'mouton' ? 'Mouton' : 'Tout le troupeau'}</span>
+                      <span>Cible : {r.target_type === 'mouton' ? (animalLabels.get(r.target_id) ?? 'Animal') : 'Tout le troupeau'}</span>
                     </div>
                     {r.next_due && (
                       <p className={`text-xs mt-1 font-medium ${isOverdue ? 'text-red-600' : 'text-primary-600'}`}>

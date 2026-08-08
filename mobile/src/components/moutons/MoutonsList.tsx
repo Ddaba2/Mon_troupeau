@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Users, Search, History } from 'lucide-react';
-import { Mouton } from '../../types';
+import { Mouton, Species } from '../../types';
 import { getMoutons, trashMouton } from '../../services/moutonService';
 import { MoutonForm } from './MoutonForm';
 import { MoutonHistory } from './MoutonHistory';
@@ -10,11 +10,17 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { logActivity } from '../../services/activityService';
 import { SkeletonList } from '../ui/Skeleton';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { SPECIES_LABELS, SPECIES_EMOJIS, SPECIES_ADULT_THRESHOLD_MONTHS } from '../../utils/species';
 
 const PAGE_SIZE = 20;
+const SPECIES_OPTIONS: Species[] = ['mouton', 'chevre', 'bovin', 'volaille', 'autre'];
 
-// Seuil séparant un agneau/agnelle (jeune) d'un mouton adulte.
-export const ADULT_THRESHOLD_MONTHS = 12;
+// Seuil (par espèce) séparant un jeune d'un adulte — voir utils/species.ts
+export function isAdult(m: Mouton): boolean | null {
+  const months = getAgeMonths(m);
+  if (months == null) return null;
+  return months >= (SPECIES_ADULT_THRESHOLD_MONTHS[m.species] ?? SPECIES_ADULT_THRESHOLD_MONTHS.autre);
+}
 
 export const SEX_LABELS: Record<string, string> = { male: '♂ Mâle', femelle: '♀ Femelle', inconnu: '? Inconnu' };
 export const ORIGIN_LABELS: Record<string, string> = { nee_ferme: 'Né(e) dans la ferme', achete: 'Acheté(e)' };
@@ -56,6 +62,7 @@ export function MoutonsList() {
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('tous');
   const [ageFilter, setAgeFilter]     = useState<AgeFilter>('tous');
+  const [speciesFilter, setSpeciesFilter] = useState<Species | 'tous'>('tous');
   const [loading, setLoading]         = useState(true);
   const [page, setPage]               = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Mouton | null>(null);
@@ -80,19 +87,20 @@ export function MoutonsList() {
 
   const filtered = moutons.filter(m => {
     if (statusFilter !== 'tous' && m.status !== statusFilter) return false;
+    if (speciesFilter !== 'tous' && m.species !== speciesFilter) return false;
     if (ageFilter !== 'tous') {
-      const months = getAgeMonths(m);
-      if (months == null) return false;
-      const isAdult = months >= ADULT_THRESHOLD_MONTHS;
-      if (ageFilter === 'adultes' && !isAdult) return false;
-      if (ageFilter === 'jeunes'  && isAdult)  return false;
+      const adult = isAdult(m);
+      if (adult == null) return false;
+      if (ageFilter === 'adultes' && !adult) return false;
+      if (ageFilter === 'jeunes'  && adult)  return false;
     }
     const q = search.toLowerCase();
     const matchSearch = !search ||
       m.identification_number.toLowerCase().includes(q) ||
       (m.name ?? '').toLowerCase().includes(q) ||
       (m.race ?? '').toLowerCase().includes(q) ||
-      SEX_LABELS[m.sex].toLowerCase().includes(q);
+      SEX_LABELS[m.sex].toLowerCase().includes(q) ||
+      SPECIES_LABELS[m.species].toLowerCase().includes(q);
     return matchSearch;
   });
 
@@ -104,8 +112,8 @@ export function MoutonsList() {
     await trashMouton(deleteTarget.id);
     await logActivity(
       currentUser?.id, currentUser?.name ?? '',
-      `Mouton déplacé vers la corbeille : #${deleteTarget.identification_number}${deleteTarget.name ? ` – ${deleteTarget.name}` : ''}`,
-      'mouton', deleteTarget.id,
+      `Animal déplacé vers la corbeille : #${deleteTarget.identification_number}${deleteTarget.name ? ` – ${deleteTarget.name}` : ''}`,
+      'mouton', deleteTarget.id, deleteTarget.species,
     );
     setDeleteTarget(null);
     load();
@@ -137,10 +145,22 @@ export function MoutonsList() {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           className="input pl-9 text-sm"
-          placeholder="Rechercher numéro, nom, race, sexe…"
+          placeholder="Rechercher numéro, nom, race, espèce…"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
         />
+      </div>
+
+      {/* Filtre espèce */}
+      <div className="flex gap-2 mb-2 overflow-x-auto pb-1">
+        {(['tous', ...SPECIES_OPTIONS] as const).map(sp => (
+          <button key={sp} onClick={() => { setSpeciesFilter(sp); setPage(1); }}
+            className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              speciesFilter === sp ? 'bg-teal-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+            }`}>
+            {sp === 'tous' ? 'Toutes espèces' : `${SPECIES_EMOJIS[sp]} ${SPECIES_LABELS[sp]}`}
+          </button>
+        ))}
       </div>
 
       {/* Filtre statut */}
@@ -177,10 +197,10 @@ export function MoutonsList() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <Users size={56} className="mx-auto text-gray-200 mb-4" />
-          <p className="text-gray-400 mb-6">{search ? 'Aucun résultat' : 'Aucun mouton enregistré'}</p>
+          <p className="text-gray-400 mb-6">{search ? 'Aucun résultat' : 'Aucun animal enregistré'}</p>
           {!search && canEdit && (
             <button onClick={() => setShowForm(true)} className="bg-primary-600 text-white px-8 py-3 rounded-full font-semibold">
-              Ajouter un mouton
+              Ajouter un animal
             </button>
           )}
         </div>
@@ -193,7 +213,7 @@ export function MoutonsList() {
                   {m.photo ? (
                     <img src={m.photo} alt={m.name ?? m.identification_number} className="w-14 h-14 rounded-xl object-cover shrink-0" />
                   ) : (
-                    <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-2xl">🐑</div>
+                    <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-2xl">{SPECIES_EMOJIS[m.species] ?? SPECIES_EMOJIS.autre}</div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -204,7 +224,7 @@ export function MoutonsList() {
                       {!m.synced && <span className="badge bg-orange-100 text-orange-600">Non sync.</span>}
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      {SEX_LABELS[m.sex]}{m.race ? ` • ${m.race}` : ''} • {formatAge(m)}
+                      {SPECIES_LABELS[m.species] ?? SPECIES_LABELS.autre} • {SEX_LABELS[m.sex]}{m.race ? ` • ${m.race}` : ''} • {formatAge(m)}
                     </p>
                     {m.status === 'vendu' && m.sale_price && (
                       <p className="text-xs text-blue-600 mt-0.5">
@@ -245,7 +265,7 @@ export function MoutonsList() {
 
       <ConfirmModal
         open={!!deleteTarget}
-        title="Supprimer ce mouton ?"
+        title="Supprimer cet animal ?"
         message="Il sera déplacé vers la corbeille — récupérable depuis Réglages tant qu'il n'est pas purgé définitivement."
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}

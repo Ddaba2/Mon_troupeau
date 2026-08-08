@@ -5,6 +5,7 @@ import { getHealthRecords } from '../../services/healthService';
 import { getSales } from '../../services/saleService';
 import { SEX_LABELS, ORIGIN_LABELS, STATUS_LABELS, STATUS_COLORS, formatAge } from './MoutonsList';
 import { computeMoutonProfitability } from '../../utils/profitability';
+import { SPECIES_LABELS, SPECIES_EMOJIS } from '../../utils/species';
 
 interface Props { mouton: Mouton; onBack: () => void }
 
@@ -93,9 +94,11 @@ export function MoutonHistory({ mouton, onBack }: Props) {
         </button>
         <div>
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-            #{mouton.identification_number}{mouton.name ? ` – ${mouton.name}` : ''}
+            {SPECIES_EMOJIS[mouton.species] ?? SPECIES_EMOJIS.autre} #{mouton.identification_number}{mouton.name ? ` – ${mouton.name}` : ''}
           </h2>
-          {mouton.race && <p className="text-sm text-gray-500 dark:text-gray-400">{mouton.race}</p>}
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {SPECIES_LABELS[mouton.species] ?? SPECIES_LABELS.autre}{mouton.race ? ` • ${mouton.race}` : ''}
+          </p>
         </div>
         <span className={`ml-auto badge ${STATUS_COLORS[mouton.status]}`}>{STATUS_LABELS[mouton.status]}</span>
       </div>
@@ -135,6 +138,7 @@ export function MoutonHistory({ mouton, onBack }: Props) {
               )}
               <div className="card">
                 <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><span className="text-gray-400">Espèce</span><p className="font-medium text-gray-800 dark:text-gray-100">{SPECIES_LABELS[mouton.species] ?? SPECIES_LABELS.autre}</p></div>
                   <div><span className="text-gray-400">Sexe</span><p className="font-medium text-gray-800 dark:text-gray-100">{SEX_LABELS[mouton.sex]}</p></div>
                   <div><span className="text-gray-400">Âge</span><p className="font-medium text-gray-800 dark:text-gray-100">{formatAge(mouton)}</p></div>
                   {mouton.race && <div><span className="text-gray-400">Race</span><p className="font-medium text-gray-800 dark:text-gray-100">{mouton.race}</p></div>}
@@ -224,7 +228,7 @@ export function MoutonHistory({ mouton, onBack }: Props) {
                 </div>
 
                 {sales.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">Aucune vente liée à ce mouton</div>
+                  <div className="text-center py-8 text-gray-400">Aucune vente liée à cet animal</div>
                 ) : (
                   sales.map(s => (
                     <div key={s.id} className="card">

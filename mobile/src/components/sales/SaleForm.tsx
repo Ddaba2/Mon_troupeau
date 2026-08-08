@@ -5,11 +5,12 @@ import { createSale, updateSale } from '../../services/saleService';
 import { getMoutons, getMoutonByIdAny } from '../../services/moutonService';
 import { logActivity } from '../../services/activityService';
 import { useAuth } from '../../context/AuthContext';
+import { formatAnimalLabel } from '../../utils/species';
 
 interface Props { sale?: Sale; onSave: () => void; onCancel: () => void }
 
 const TARGET_TYPES = [
-  { value: 'mouton', label: '🐑 Mouton' },
+  { value: 'mouton', label: '🐾 Animal' },
   { value: 'fumier', label: '🌾 Fumier' },
   { value: 'autre',  label: '— Autre revenu' },
 ];
@@ -117,12 +118,12 @@ export function SaleForm({ sale, onSave, onCancel }: Props) {
         {/* Sélecteur du mouton vendu */}
         {form.target_type === 'mouton' && (
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Mouton vendu</span>
+            <span className="text-sm font-medium text-gray-700">Animal vendu</span>
             <select className="input mt-1" value={form.target_id} onChange={set('target_id')}>
-              <option value="">— Choisir un mouton —</option>
+              <option value="">— Choisir un animal —</option>
               {moutons.map(m => (
                 <option key={m.id} value={String(m.id)}>
-                  #{m.identification_number}{m.name ? ` – ${m.name}` : ''}
+                  {formatAnimalLabel(m)}
                   {m.deleted_at ? ' (supprimé)' : m.status !== 'vivant' ? ' (déjà vendu)' : ''}
                 </option>
               ))}

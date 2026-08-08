@@ -98,6 +98,7 @@ const MIGRATIONS: string[] = [
   "ALTER TABLE expenses ADD COLUMN deleted_at TEXT",
   "ALTER TABLE moutons ADD COLUMN purchase_price REAL",
   "ALTER TABLE health_records ADD COLUMN recurrence_months INTEGER",
+  "ALTER TABLE moutons ADD COLUMN species TEXT NOT NULL DEFAULT 'mouton'",
 ];
 
 // ─── Backend NAVIGATEUR : sql.js ──────────────────────────────────────────────

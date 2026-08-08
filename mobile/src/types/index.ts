@@ -24,11 +24,14 @@ export interface ActivityLog {
   created_at?: string;
 }
 
+export type Species = 'mouton' | 'chevre' | 'bovin' | 'volaille' | 'autre';
+
 export interface Mouton {
   id?: number;
   identification_number: string;
   name?: string;
   photo?: string;
+  species: Species;
   race?: string;
   sex: 'male' | 'femelle' | 'inconnu';
   birth_date?: string;

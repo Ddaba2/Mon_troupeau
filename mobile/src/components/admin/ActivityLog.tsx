@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ClipboardList, Trash2, RefreshCw } from 'lucide-react';
 import { ActivityLog as ActivityLogType } from '../../types';
 import { getActivityLog, clearActivityLog } from '../../services/activityService';
-
-const ENTITY_ICONS: Record<string, string> = {
-  user: '👤', mouton: '🐑', sale: '💰', health: '💊', expense: '💸', sync: '🔄',
-};
+import { getEntityIcon } from '../../utils/species';
 
 export function ActivityLog() {
   const [logs, setLogs]       = useState<ActivityLogType[]>([]);
@@ -53,7 +50,7 @@ export function ActivityLog() {
           {logs.map(log => (
             <div key={log.id} className="flex items-start gap-3 py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
               <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-sm">
-                {ENTITY_ICONS[log.entity_type ?? ''] ?? '📋'}
+                {getEntityIcon(log.entity_type, log.details)}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-800 dark:text-gray-100 font-medium">{log.action}</p>
@@ -66,7 +63,7 @@ export function ActivityLog() {
                     </span>
                   )}
                 </div>
-                {log.details && (
+                {log.details && log.entity_type !== 'mouton' && (
                   <p className="text-xs text-gray-400 mt-0.5 truncate italic">{log.details}</p>
                 )}
               </div>

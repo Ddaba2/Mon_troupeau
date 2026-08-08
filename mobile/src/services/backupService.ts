@@ -28,11 +28,11 @@ export async function restoreFromBackup(data: BackupData): Promise<{ moutons: nu
   for (const m of data.moutons) {
     await run(
       `INSERT INTO moutons
-       (id, identification_number, name, photo, race, sex, birth_date, estimated_age_months, color,
+       (id, identification_number, name, photo, species, race, sex, birth_date, estimated_age_months, color,
         origin, status, sale_price, sale_date, buyer_name, observations, synced, server_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        m.id ?? null, m.identification_number, m.name ?? null, m.photo ?? null, m.race ?? null, m.sex,
+        m.id ?? null, m.identification_number, m.name ?? null, m.photo ?? null, m.species ?? 'mouton', m.race ?? null, m.sex,
         m.birth_date ?? null, m.estimated_age_months ?? null, m.color ?? null,
         m.origin, m.status, m.sale_price ?? null, m.sale_date ?? null, m.buyer_name ?? null,
         m.observations ?? null, m.synced ?? 1, m.server_id ?? null, m.created_at ?? now(), m.updated_at ?? now(),

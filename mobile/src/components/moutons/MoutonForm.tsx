@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Save, Camera, Trash2 } from 'lucide-react';
-import { Mouton } from '../../types';
+import { Mouton, Species } from '../../types';
 import { createMouton, updateMouton } from '../../services/moutonService';
 import { logActivity } from '../../services/activityService';
 import { useAuth } from '../../context/AuthContext';
 import { compressImage } from '../../utils/imageUtils';
+import { SPECIES_LABELS, SPECIES_EMOJIS } from '../../utils/species';
+
+const SPECIES_OPTIONS: Species[] = ['mouton', 'chevre', 'bovin', 'volaille', 'autre'];
 
 interface Props { mouton?: Mouton; onSave: () => void; onCancel: () => void }
 
@@ -14,6 +17,7 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
   const [form, setForm] = useState({
     identification_number: m?.identification_number ?? '',
     name:                  m?.name                  ?? '',
+    species:               m?.species               ?? 'mouton' as Species,
     race:                  m?.race                  ?? '',
     sex:                   m?.sex                    ?? 'inconnu',
     birth_date:            m?.birth_date             ?? '',
@@ -80,10 +84,10 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
       const label = `#${payload.identification_number}${payload.name ? ` – ${payload.name}` : ''}`;
       if (m?.id) {
         await updateMouton(m.id, payload);
-        await logActivity(currentUser?.id, currentUser?.name ?? '', `Mouton modifié : ${label}`, 'mouton', m.id);
+        await logActivity(currentUser?.id, currentUser?.name ?? '', `Animal modifié : ${label}`, 'mouton', m.id, payload.species);
       } else {
         const newId = await createMouton(payload);
-        await logActivity(currentUser?.id, currentUser?.name ?? '', `Nouveau mouton ajouté : ${label}`, 'mouton', newId);
+        await logActivity(currentUser?.id, currentUser?.name ?? '', `Nouvel animal ajouté : ${label}`, 'mouton', newId, payload.species);
       }
       onSave();
     } catch (e: any) {
@@ -100,7 +104,7 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-          {m ? 'Modifier le mouton' : 'Nouveau mouton'}
+          {m ? "Modifier l'animal" : 'Nouvel animal'}
         </h2>
       </div>
 
@@ -120,7 +124,7 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
             </div>
           ) : form.photo ? (
             <div className="relative w-32 h-32">
-              <img src={form.photo} alt="Mouton" className="w-32 h-32 object-cover rounded-2xl" />
+              <img src={form.photo} alt="Animal" className="w-32 h-32 object-cover rounded-2xl" />
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, photo: '' }))}
@@ -138,6 +142,20 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
               <Camera size={20} /> Prendre / choisir une photo
             </button>
           )}
+        </div>
+
+        <div className="block">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Espèce</span>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {SPECIES_OPTIONS.map(sp => (
+              <button key={sp} type="button" onClick={() => setForm(f => ({ ...f, species: sp }))}
+                className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  form.species === sp ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                }`}>
+                {SPECIES_EMOJIS[sp]} {SPECIES_LABELS[sp]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

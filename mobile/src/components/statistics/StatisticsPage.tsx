@@ -7,10 +7,12 @@ import { getHealthRecords } from '../../services/healthService';
 import { getExpenses } from '../../services/expenseService';
 import { downloadJSON, downloadPDF, downloadCSV } from '../../utils/exportUtils';
 import { TARGET_LABELS } from '../sales/SalesList';
-import { SEX_LABELS, STATUS_LABELS, getAgeMonths, ADULT_THRESHOLD_MONTHS } from '../moutons/MoutonsList';
+import { SEX_LABELS, STATUS_LABELS, isAdult } from '../moutons/MoutonsList';
 import { SkeletonList } from '../ui/Skeleton';
 import { useApp } from '../../context/AppContext';
 import { computeMoutonProfitability, MoutonProfitability } from '../../utils/profitability';
+import { SPECIES_LABELS } from '../../utils/species';
+import { Species } from '../../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MonthRow  { month: string; cnt: number; revenue: number }
@@ -18,6 +20,7 @@ interface TypeRow   { target_type: string; cnt: number; revenue: number }
 interface PayRow    { payment_method: string; cnt: number; revenue: number }
 interface StatusRow { status: string; count: number }
 interface SexRow    { sex: string; count: number }
+interface SpeciesRow { species: Species; count: number }
 interface RaceRow   { race: string | null; count: number }
 interface TypeCntRow { type: string; count: number }
 interface AgeStats  { adultes: number; jeunes: number; inconnu: number }
@@ -91,6 +94,7 @@ export function StatisticsPage() {
   const [salesByPay, setSalesByPay]       = useState<PayRow[]>([]);
   const [moutonStatus, setMoutonStatus]   = useState<StatusRow[]>([]);
   const [moutonSex, setMoutonSex]         = useState<SexRow[]>([]);
+  const [moutonSpecies, setMoutonSpecies] = useState<SpeciesRow[]>([]);
   const [moutonRace, setMoutonRace]       = useState<RaceRow[]>([]);
   const [ageStats, setAgeStats]           = useState<AgeStats>({ adultes: 0, jeunes: 0, inconnu: 0 });
   const [healthByType, setHealthByType]   = useState<TypeCntRow[]>([]);
@@ -100,7 +104,7 @@ export function StatisticsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [monthly, byType, byPay, statusRows, sexRows, raceRows, healthT, revRow, expRow, moutonsForAge, allHealth, allSales] = await Promise.all([
+    const [monthly, byType, byPay, statusRows, sexRows, speciesRows, raceRows, healthT, revRow, expRow, moutonsForAge, allHealth, allSales] = await Promise.all([
       query<MonthRow>(
         `SELECT strftime('%Y-%m', date) as month,
                 COUNT(*) as cnt,
@@ -124,6 +128,7 @@ export function StatisticsPage() {
       ),
       query<StatusRow>('SELECT status, COUNT(*) as count FROM moutons WHERE deleted_at IS NULL GROUP BY status'),
       query<SexRow>('SELECT sex, COUNT(*) as count FROM moutons WHERE deleted_at IS NULL GROUP BY sex'),
+      query<SpeciesRow>('SELECT species, COUNT(*) as count FROM moutons WHERE deleted_at IS NULL GROUP BY species ORDER BY count DESC'),
       query<RaceRow>('SELECT race, COUNT(*) as count FROM moutons WHERE deleted_at IS NULL GROUP BY race ORDER BY count DESC'),
       query<TypeCntRow>('SELECT type, COUNT(*) as count FROM health_records WHERE deleted_at IS NULL GROUP BY type'),
       query<{ revenue: number }>(
@@ -144,6 +149,7 @@ export function StatisticsPage() {
     setSalesByPay(byPay);
     setMoutonStatus(statusRows);
     setMoutonSex(sexRows);
+    setMoutonSpecies(speciesRows);
     setMoutonRace(raceRows);
     setHealthByType(healthT);
     setPeriodRevenue(revRow[0]?.revenue ?? 0);
@@ -151,9 +157,9 @@ export function StatisticsPage() {
 
     let adultes = 0, jeunes = 0, inconnu = 0;
     for (const m of moutonsForAge) {
-      const months = getAgeMonths(m);
-      if (months == null) inconnu++;
-      else if (months >= ADULT_THRESHOLD_MONTHS) adultes++;
+      const adult = isAdult(m);
+      if (adult == null) inconnu++;
+      else if (adult) adultes++;
       else jeunes++;
     }
     setAgeStats({ adultes, jeunes, inconnu });
@@ -176,10 +182,10 @@ export function StatisticsPage() {
     ]);
     const date = new Date().toISOString().split('T')[0];
 
-    await downloadCSV(`moutons-${date}.csv`,
-      ['Numéro', 'Nom', 'Race', 'Sexe', 'Statut', 'Naissance', 'Couleur', 'Origine'],
+    await downloadCSV(`animaux-${date}.csv`,
+      ['Numéro', 'Nom', 'Espèce', 'Race', 'Sexe', 'Statut', 'Naissance', 'Couleur', 'Origine'],
       moutons.map(m => [
-        m.identification_number, m.name ?? '', m.race ?? '', SEX_LABELS[m.sex] ?? m.sex,
+        m.identification_number, m.name ?? '', SPECIES_LABELS[m.species] ?? m.species, m.race ?? '', SEX_LABELS[m.sex] ?? m.sex,
         STATUS_LABELS[m.status] ?? m.status, m.birth_date ?? '', m.color ?? '',
         m.origin === 'nee_ferme' ? 'Né(e) dans la ferme' : 'Acheté(e)',
       ]),
@@ -235,9 +241,9 @@ export function StatisticsPage() {
         },
         {
           title: 'Tout le troupeau',
-          headers: ['N°', 'Nom', 'Race', 'Sexe', 'Statut', 'Naissance'],
+          headers: ['N°', 'Nom', 'Espèce', 'Race', 'Sexe', 'Statut', 'Naissance'],
           rows: moutons.map(m => [
-            m.identification_number, m.name ?? '—', m.race ?? '—',
+            m.identification_number, m.name ?? '—', SPECIES_LABELS[m.species] ?? m.species, m.race ?? '—',
             SEX_LABELS[m.sex] ?? m.sex, STATUS_LABELS[m.status] ?? m.status, m.birth_date ?? '—',
           ]),
         },
@@ -279,6 +285,7 @@ export function StatisticsPage() {
   const maxTypeRevenue  = Math.max(...salesByType.map(t => t.revenue), 1);
   const maxStatusCount  = Math.max(...moutonStatus.map(c => c.count), 1);
   const maxSexCount     = Math.max(...moutonSex.map(p => p.count), 1);
+  const maxSpeciesCount = Math.max(...moutonSpecies.map(p => p.count), 1);
   const maxRaceCount    = Math.max(...moutonRace.map(r => r.count), 1);
   const maxHealthCount  = Math.max(...healthByType.map(h => h.count), 1);
   const maxAgeCount     = Math.max(ageStats.adultes, ageStats.jeunes, ageStats.inconnu, 1);
@@ -391,9 +398,9 @@ export function StatisticsPage() {
             <p className="text-3xl font-bold text-white">{netProfit.toLocaleString('fr-FR')} FCFA</p>
           </div>
 
-          {/* Rentabilité par mouton */}
+          {/* Rentabilité par animal */}
           {profitability.length > 0 && (
-            <SectionCard title="Rentabilité par mouton" icon={Award}>
+            <SectionCard title="Rentabilité par animal" icon={Award}>
               <div className="space-y-2">
                 {profitability.slice(0, 10).map(p => (
                   <div key={p.mouton.id} className="flex items-center justify-between py-1 border-b border-gray-50 dark:border-gray-700 last:border-0">
@@ -412,10 +419,10 @@ export function StatisticsPage() {
                 ))}
               </div>
               {profitability.length > 10 && (
-                <p className="text-xs text-gray-400 mt-2 text-right">+{profitability.length - 10} autre(s) mouton(s)</p>
+                <p className="text-xs text-gray-400 mt-2 text-right">+{profitability.length - 10} autre(s) animal(aux)</p>
               )}
               <p className="text-[11px] text-gray-400 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                Ne compte que les ventes, achats et soins individuellement rattachés à chaque mouton (les soins « tout le troupeau » ne sont pas répartis).
+                Ne compte que les ventes, achats et soins individuellement rattachés à chaque animal (les soins « tout le troupeau » ne sont pas répartis).
               </p>
             </SectionCard>
           )}
@@ -470,6 +477,21 @@ export function StatisticsPage() {
             </SectionCard>
           )}
 
+          {/* Répartition par espèce */}
+          {moutonSpecies.length > 0 && (
+            <SectionCard title="Répartition par espèce" icon={Users}>
+              {moutonSpecies.map(s => (
+                <BarRow
+                  key={s.species}
+                  label={SPECIES_LABELS[s.species] ?? SPECIES_LABELS.autre}
+                  value={s.count}
+                  max={maxSpeciesCount}
+                  color="bg-teal-400"
+                />
+              ))}
+            </SectionCard>
+          )}
+
           {/* Répartition par statut */}
           <SectionCard title="Statut du troupeau" icon={Users}>
             {moutonStatus.map(s => (
@@ -482,7 +504,7 @@ export function StatisticsPage() {
               />
             ))}
             <div className="text-xs text-gray-400 mt-2 text-right">
-              Total : {moutonStatus.reduce((s, r) => s + r.count, 0)} moutons
+              Total : {moutonStatus.reduce((s, r) => s + r.count, 0)} animaux
             </div>
           </SectionCard>
 

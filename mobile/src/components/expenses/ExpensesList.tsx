@@ -10,7 +10,7 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { logActivity } from '../../services/activityService';
 
 export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  achat_moutons: 'Achat de moutons',
+  achat_moutons: "Achat d'animaux",
   alimentation:  'Alimentation',
   medicaments:   'Médicaments',
   transport:     'Transport',

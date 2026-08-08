@@ -10,6 +10,7 @@ import { TARGET_LABELS } from '../sales/SalesList';
 import { TYPE_LABELS } from '../health/HealthList';
 import { CATEGORY_LABELS } from '../expenses/ExpensesList';
 import { useApp } from '../../context/AppContext';
+import { SPECIES_LABELS, SPECIES_EMOJIS } from '../../utils/species';
 
 export function GlobalSearch() {
   const { setActiveTab, setPendingMoutonId } = useApp();
@@ -36,7 +37,8 @@ export function GlobalSearch() {
     return moutons.filter(m =>
       m.identification_number.toLowerCase().includes(q) ||
       (m.name ?? '').toLowerCase().includes(q) ||
-      (m.race ?? '').toLowerCase().includes(q),
+      (m.race ?? '').toLowerCase().includes(q) ||
+      SPECIES_LABELS[m.species].toLowerCase().includes(q),
     ).slice(0, 20);
   }, [q, moutons]);
 
@@ -77,7 +79,7 @@ export function GlobalSearch() {
         <input
           autoFocus
           className="input pl-9 text-sm"
-          placeholder="Numéro, nom, race, client, produit…"
+          placeholder="Numéro, nom, race, espèce, client, produit…"
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
@@ -88,7 +90,7 @@ export function GlobalSearch() {
       ) : !q ? (
         <div className="text-center py-16 text-gray-400">
           <Search size={56} className="mx-auto text-gray-200 mb-4" />
-          <p>Cherchez un mouton, une vente, un soin ou une dépense</p>
+          <p>Cherchez un animal, une vente, un soin ou une dépense</p>
         </div>
       ) : totalResults === 0 ? (
         <div className="text-center py-16 text-gray-400">Aucun résultat pour « {query} »</div>
@@ -97,7 +99,7 @@ export function GlobalSearch() {
           {matchedMoutons.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <Users size={13} /> Moutons
+                <Users size={13} /> Animaux
               </p>
               <div className="space-y-2">
                 {matchedMoutons.map(m => (
@@ -105,13 +107,13 @@ export function GlobalSearch() {
                     {m.photo ? (
                       <img src={m.photo} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-lg">🐑</div>
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-lg">{SPECIES_EMOJIS[m.species] ?? SPECIES_EMOJIS.autre}</div>
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
                         #{m.identification_number}{m.name ? ` – ${m.name}` : ''}
                       </p>
-                      <p className="text-xs text-gray-400">{SEX_LABELS[m.sex]} · {STATUS_LABELS[m.status]}{m.race ? ` · ${m.race}` : ''}</p>
+                      <p className="text-xs text-gray-400">{SPECIES_LABELS[m.species] ?? SPECIES_LABELS.autre} · {SEX_LABELS[m.sex]} · {STATUS_LABELS[m.status]}{m.race ? ` · ${m.race}` : ''}</p>
                     </div>
                   </button>
                 ))}

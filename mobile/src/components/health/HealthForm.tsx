@@ -6,6 +6,7 @@ import { getMoutons, getMoutonByIdAny } from '../../services/moutonService';
 import { scheduleHealthReminders } from '../../services/notificationService';
 import { logActivity } from '../../services/activityService';
 import { useAuth } from '../../context/AuthContext';
+import { formatAnimalLabel } from '../../utils/species';
 
 interface Props { record?: HealthRecord; onSave: () => void; onCancel: () => void }
 
@@ -67,7 +68,7 @@ export function HealthForm({ record, onSave, onCancel }: Props) {
   };
 
   const handleSave = async () => {
-    if (form.target_type === 'mouton' && !form.target_id) { alert('Choisissez un mouton'); return; }
+    if (form.target_type === 'mouton' && !form.target_id) { alert('Choisissez un animal'); return; }
     setSaving(true);
     try {
       const payload = {
@@ -85,7 +86,7 @@ export function HealthForm({ record, onSave, onCancel }: Props) {
       const targetMouton = form.target_type === 'mouton'
         ? moutons.find(m => String(m.id) === form.target_id)
         : undefined;
-      const target = targetMouton ? `#${targetMouton.identification_number}` : 'tout le troupeau';
+      const target = targetMouton ? formatAnimalLabel(targetMouton) : 'tout le troupeau';
       const label = `${TYPE_LABELS[form.type as HealthRecord['type']]} — ${target}`;
       if (record?.id) {
         await updateHealthRecord(record.id, payload);
@@ -133,19 +134,19 @@ export function HealthForm({ record, onSave, onCancel }: Props) {
               className={`py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-colors ${
                 form.target_type === 'mouton' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-600'
               }`}>
-              Un mouton
+              Un animal
             </button>
           </div>
         </div>
 
         {form.target_type === 'mouton' && (
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Mouton concerné</span>
+            <span className="text-sm font-medium text-gray-700">Animal concerné</span>
             <select className="input mt-1" value={form.target_id} onChange={set('target_id')}>
-              <option value="">— Choisir un mouton —</option>
+              <option value="">— Choisir un animal —</option>
               {moutons.map(m => (
                 <option key={m.id} value={String(m.id)}>
-                  #{m.identification_number}{m.name ? ` – ${m.name}` : ''}{m.deleted_at ? ' (supprimé)' : ''}
+                  {formatAnimalLabel(m)}{m.deleted_at ? ' (supprimé)' : ''}
                 </option>
               ))}
             </select>

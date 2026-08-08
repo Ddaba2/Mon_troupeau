@@ -7,12 +7,9 @@ import { getSales } from '../services/saleService';
 import { getMoutons } from '../services/moutonService';
 import { getActivityLog } from '../services/activityService';
 import { query } from '../db/DatabaseService';
-import { HealthRecord, Sale, ActivityLog as ActivityLogEntry } from '../types';
-import { getAgeMonths, ADULT_THRESHOLD_MONTHS } from './moutons/MoutonsList';
-
-const ENTITY_ICONS: Record<string, string> = {
-  user: '👤', mouton: '🐑', sale: '💰', health: '💊', expense: '💸', sync: '🔄',
-};
+import { HealthRecord, Sale, ActivityLog as ActivityLogEntry, Species } from '../types';
+import { isAdult } from './moutons/MoutonsList';
+import { SPECIES_LABELS, getEntityIcon } from '../utils/species';
 
 function MiniStat({ label, value, icon: Icon, color }: {
   label: string; value: string | number; icon: React.ElementType; color: string;
@@ -47,6 +44,7 @@ export function Dashboard() {
   const [alerts, setAlerts]               = useState<HealthRecord[]>([]);
   const [allSales, setAllSales]           = useState<Sale[]>([]);
   const [raceBreakdown, setRaceBreakdown] = useState<{ race: string; count: number }[]>([]);
+  const [speciesBreakdown, setSpeciesBreakdown] = useState<{ species: Species; count: number }[]>([]);
   const [ageStats, setAgeStats]           = useState({ adultes: 0, jeunes: 0 });
   const [todayTreatments, setTodayTreatments] = useState(0);
   const [monthExpenses, setMonthExpenses] = useState(0);
@@ -60,16 +58,23 @@ export function Dashboard() {
 
     getMoutons().then(moutons => {
       const races: Record<string, number> = {};
+      const species: Partial<Record<Species, number>> = {};
       let adultes = 0, jeunes = 0;
       for (const m of moutons) {
         const raceKey = m.race?.trim() || 'Race inconnue';
         races[raceKey] = (races[raceKey] ?? 0) + 1;
-        const months = getAgeMonths(m);
-        if (months != null) {
-          if (months >= ADULT_THRESHOLD_MONTHS) adultes++; else jeunes++;
+        species[m.species] = (species[m.species] ?? 0) + 1;
+        const adult = isAdult(m);
+        if (adult != null) {
+          if (adult) adultes++; else jeunes++;
         }
       }
       setRaceBreakdown(Object.entries(races).map(([race, count]) => ({ race, count })).sort((a, b) => b.count - a.count));
+      setSpeciesBreakdown(
+        (Object.entries(species) as [Species, number][])
+          .map(([sp, count]) => ({ species: sp, count }))
+          .sort((a, b) => b.count - a.count),
+      );
       setAgeStats({ adultes, jeunes });
     });
 
@@ -98,7 +103,7 @@ export function Dashboard() {
   const balance = stats.totalRevenue - stats.totalExpenses;
 
   const quickActions = [
-    { label: 'Nouveau mouton',    tab: 'moutons',            icon: Users,        color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',   show: canAdd },
+    { label: 'Nouvel animal',     tab: 'moutons',            icon: Users,        color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',   show: canAdd },
     { label: 'Enregistrer vente', tab: 'finances/recettes',  icon: ShoppingCart, color: 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300', show: canSell },
     { label: 'Soin / Vaccin',     tab: 'health',             icon: Heart,        color: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300',        show: canAdd },
     { label: 'Nouvelle dépense',  tab: 'finances/depenses',  icon: Wallet,       color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300', show: canAdd },
@@ -147,14 +152,26 @@ export function Dashboard() {
       {/* Bloc Troupeau */}
       <BlocCard title="Troupeau" icon={Users}>
         <div className="grid grid-cols-2 gap-y-3 mb-3">
-          <MiniStat label="Total moutons" value={stats.totalMoutons}   icon={Users} color="bg-primary-600" />
+          <MiniStat label="Total animaux" value={stats.totalMoutons}   icon={Users} color="bg-primary-600" />
           <MiniStat label="Mâles"         value={stats.moutonsMales}   icon={Users} color="bg-blue-500" />
           <MiniStat label="Femelles"      value={stats.moutonsFemelles} icon={Users} color="bg-pink-500" />
           <MiniStat label="Adultes"       value={ageStats.adultes}     icon={Users} color="bg-green-500" />
           <MiniStat label="Jeunes"        value={ageStats.jeunes}      icon={Users} color="bg-yellow-500" />
         </div>
-        {raceBreakdown.length > 0 && (
+        {speciesBreakdown.length > 0 && (
           <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
+            <p className="text-xs font-medium text-gray-400 mb-2">Répartition par espèce</p>
+            <div className="flex flex-wrap gap-2">
+              {speciesBreakdown.map(s => (
+                <span key={s.species} className="badge bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300">
+                  {SPECIES_LABELS[s.species] ?? SPECIES_LABELS.autre} : {s.count}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {raceBreakdown.length > 0 && (
+          <div className="border-t border-gray-100 dark:border-gray-700 pt-3 mt-3">
             <p className="text-xs font-medium text-gray-400 mb-2">Répartition par race</p>
             <div className="flex flex-wrap gap-2">
               {raceBreakdown.map(r => (
@@ -175,7 +192,7 @@ export function Dashboard() {
         <div className="grid grid-cols-3 gap-2">
           <MiniStat label="Traitements aujourd'hui" value={todayTreatments}    icon={Syringe}      color="bg-blue-500" />
           <MiniStat label="Rappels prévus"           value={alerts.length}     icon={CalendarClock} color="bg-orange-500" />
-          <MiniStat label="Moutons à traiter"        value={moutonsNeedingCare} icon={AlertTriangle} color="bg-red-500" />
+          <MiniStat label="Animaux à traiter"        value={moutonsNeedingCare} icon={AlertTriangle} color="bg-red-500" />
         </div>
         <button onClick={() => setActiveTab('health')} className="w-full mt-3 text-xs text-primary-600 dark:text-primary-400 font-medium text-center">
           Voir le suivi sanitaire
@@ -200,7 +217,7 @@ export function Dashboard() {
           <div className="space-y-2">
             {recentActivity.map(log => (
               <div key={log.id} className="flex items-start gap-2.5 py-1 border-b border-gray-50 dark:border-gray-700 last:border-0">
-                <span className="text-lg shrink-0">{ENTITY_ICONS[log.entity_type ?? ''] ?? '📋'}</span>
+                <span className="text-lg shrink-0">{getEntityIcon(log.entity_type, log.details)}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-800 dark:text-gray-100 truncate">{log.action}</p>
                   {log.created_at && (
