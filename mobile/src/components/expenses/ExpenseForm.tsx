@@ -3,6 +3,7 @@ import { Save, X } from 'lucide-react';
 import { Expense, ExpenseCategory } from '../../types';
 import { createExpense, updateExpense } from '../../services/expenseService';
 import { logActivity } from '../../services/activityService';
+import { checkNegativeBalanceAlert } from '../../services/notificationService';
 import { useAuth } from '../../context/AuthContext';
 
 const CATEGORIES: { value: ExpenseCategory; label: string }[] = [
@@ -50,6 +51,7 @@ export function ExpenseForm({ expense, onSave, onCancel }: Props) {
         const newId = await createExpense(data);
         await logActivity(currentUser?.id, currentUser?.name ?? '', `Dépense enregistrée : ${categoryLabel} — ${data.amount.toLocaleString('fr-FR')} FCFA`, 'expense', newId);
       }
+      checkNegativeBalanceAlert().catch(() => {});
       onSave();
     } finally {
       setSaving(false);

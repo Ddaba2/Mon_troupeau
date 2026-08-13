@@ -28,13 +28,14 @@ async function main() {
     const dest = path.join(ANDROID_RES, dir);
     fs.mkdirSync(dest, { recursive: true });
 
-    const logoSize = Math.round(size * 0.8);
+    const logoSize = Math.round(size * 0.92);
     const logo = img.clone().resize({ w: logoSize, h: logoSize });
     const x = Math.round((size - logo.width) / 2);
     const y = Math.round((size - logo.height) / 2);
 
-    // Fond blanc
-    const bg = new Jimp({ width: size, height: size, color: 0xFFFFFFFF });
+    // Fond vert de la marque (cf. capacitor.config.ts / index.html) — logo.png étant
+    // désormais découpé avec fond transparent, l'icône remplit tout le cercle sans halo blanc.
+    const bg = new Jimp({ width: size, height: size, color: 0x16a34aff });
     bg.composite(logo, x, y);
     await bg.write(path.join(dest, 'ic_launcher.png'));
     await bg.write(path.join(dest, 'ic_launcher_round.png'));

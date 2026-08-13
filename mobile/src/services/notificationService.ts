@@ -2,10 +2,14 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { getUpcomingDue } from './healthService';
 import { getMoutons } from './moutonService';
 import { getSetting, setSetting } from './userService';
+import { getTotalRevenue } from './saleService';
+import { getTotalExpenses } from './expenseService';
 import { HealthRecord } from '../types';
 
 const NOTIF_CHANNEL_ID = 'health-reminders';
 const REMINDERS_ENABLED_KEY = 'health_reminders_enabled';
+const BALANCE_ALERT_CHANNEL_ID = 'finance-alerts';
+const BALANCE_ALERT_NOTIF_ID = 2000; // id fixe : une nouvelle alerte remplace la précédente au lieu de s'empiler
 
 // Titres alignés sur les 4 catégories de notifications du cahier des charges :
 // vaccination, vermifuge, injection ont un libellé dédié ; le reste (vitamines,
@@ -117,5 +121,39 @@ export async function scheduleHealthReminders(): Promise<void> {
     }
   } catch (err) {
     console.warn('Notifications non disponibles:', err);
+  }
+}
+
+// Alerte locale quand le solde global de la ferme (recettes - dépenses) devient négatif.
+// Appelée après l'enregistrement d'une dépense.
+export async function checkNegativeBalanceAlert(): Promise<void> {
+  const supported = await isSupported();
+  if (!supported) return;
+
+  try {
+    const [revenue, expenses] = await Promise.all([getTotalRevenue(), getTotalExpenses()]);
+    const balance = revenue - expenses;
+    if (balance >= 0) return;
+
+    await LocalNotifications.createChannel({
+      id: BALANCE_ALERT_CHANNEL_ID,
+      name: 'Alertes financières',
+      description: 'Alerte quand le solde de la ferme devient négatif',
+      importance: 4,
+      visibility: 1,
+      vibration: true,
+    });
+
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: BALANCE_ALERT_NOTIF_ID,
+        title: '⚠️ Solde négatif',
+        body: `Le solde de la ferme est de ${balance.toLocaleString('fr-FR')} FCFA.`,
+        channelId: BALANCE_ALERT_CHANNEL_ID,
+        schedule: { at: new Date(Date.now() + 1000) },
+      }],
+    });
+  } catch (err) {
+    console.warn('Alerte solde négatif indisponible:', err);
   }
 }

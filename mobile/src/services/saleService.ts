@@ -10,6 +10,13 @@ export async function getSales(): Promise<Sale[]> {
   );
 }
 
+export async function getTotalRevenue(): Promise<number> {
+  const rows = await query<{ total: number }>(
+    'SELECT COALESCE(SUM(amount), 0) as total FROM sales WHERE deleted_at IS NULL',
+  );
+  return rows[0]?.total ?? 0;
+}
+
 export async function getTrashedSales(): Promise<Sale[]> {
   return query<Sale>(
     `SELECT s.*, m.identification_number as target_label
