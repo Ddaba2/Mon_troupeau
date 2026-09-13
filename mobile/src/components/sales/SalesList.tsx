@@ -12,6 +12,8 @@ import { speak } from '../../utils/voice';
 
 export const TARGET_LABELS: Record<string, string> = {
   mouton: '🐾 Animal',
+  volaille: '🐔 Volaille',
+  oeuf: '🥚 Œufs',
   fumier: '🌾 Fumier',
   autre:  '— Autre revenu',
 };

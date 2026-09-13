@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Save, X } from 'lucide-react';
-import { Expense, ExpenseCategory } from '../../types';
+import { Expense, ExpenseCategory, PoultryLotSummary } from '../../types';
 import { createExpense, updateExpense } from '../../services/expenseService';
 import { logActivity } from '../../services/activityService';
 import { checkNegativeBalanceAlert } from '../../services/notificationService';
 import { useAuth } from '../../context/AuthContext';
+import { getMoutons } from '../../services/moutonService';
+import { getPoultryLots } from '../../services/poultryService';
 
 const CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: 'achat_moutons', label: "Achat d'animaux" },
@@ -31,6 +33,16 @@ export function ExpenseForm({ expense, onSave, onCancel }: Props) {
   const [paymentMethod, setPaymentMethod] = useState(expense?.payment_method ?? 'especes');
   const [notes, setNotes]           = useState(expense?.notes ?? '');
   const [saving, setSaving]         = useState(false);
+  const [moutons, setMoutons]       = useState<{ id?: number; identification_number: string; name?: string }[]>([]);
+  const [lots, setLots]             = useState<PoultryLotSummary[]>([]);
+  const [target, setTarget]         = useState(expense?.target_type ? `${expense.target_type}:${expense.target_id}` : '');
+
+  useEffect(() => {
+    Promise.all([getMoutons(), getPoultryLots()]).then(([animals, poultryLots]) => {
+      setMoutons(animals);
+      setLots(poultryLots);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +54,8 @@ export function ExpenseForm({ expense, onSave, onCancel }: Props) {
         description: description.trim() || undefined,
         payment_method: paymentMethod as Expense['payment_method'],
         notes: notes.trim() || undefined,
+        target_type: target ? target.split(':')[0] as Expense['target_type'] : undefined,
+        target_id: target ? Number(target.split(':')[1]) : undefined,
       };
       const categoryLabel = CATEGORIES.find(c => c.value === category)?.label ?? category;
       if (expense?.id) {
@@ -104,6 +118,15 @@ export function ExpenseForm({ expense, onSave, onCancel }: Props) {
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="label">Liée à (facultatif)</label>
+          <select className="input" value={target} onChange={e => setTarget(e.target.value)}>
+            <option value="">Dépense générale</option>
+            {moutons.map(animal => <option key={`m${animal.id}`} value={`mouton:${animal.id}`}>Animal #{animal.identification_number}{animal.name ? ` - ${animal.name}` : ''}</option>)}
+            {lots.map(lot => <option key={`l${lot.id}`} value={`poultry_lot:${lot.id}`}>Lot {lot.name}</option>)}
+          </select>
         </div>
 
         <div>

@@ -11,6 +11,7 @@ import { HealthRecord, Sale, ActivityLog as ActivityLogEntry, Species } from '..
 import { isAdult } from './moutons/MoutonsList';
 import { SPECIES_LABELS, getEntityIcon } from '../utils/species';
 import { speak } from '../utils/voice';
+import { getPoultryLots } from '../services/poultryService';
 
 function MiniStat({ label, value, icon: Icon, color }: {
   label: string; value: string | number; icon: React.ElementType; color: string;
@@ -50,12 +51,20 @@ export function Dashboard() {
   const [todayTreatments, setTodayTreatments] = useState(0);
   const [monthExpenses, setMonthExpenses] = useState(0);
   const [recentActivity, setRecentActivity] = useState<ActivityLogEntry[]>([]);
+  const [poultryAlerts, setPoultryAlerts] = useState<string[]>([]);
 
   useEffect(() => {
     refreshStats();
     getUpcomingDue().then(setAlerts);
     getSales().then(setAllSales);
     getActivityLog(6).then(setRecentActivity);
+    getPoultryLots().then(lots => setPoultryAlerts(lots.flatMap(lot => {
+      const alerts: string[] = [];
+      if (lot.current_count <= Math.max(5, Math.ceil(lot.initial_count * 0.1))) alerts.push(`${lot.name} : stock faible (${lot.current_count})`);
+      if (lot.deaths / Math.max(1, lot.initial_count) >= 0.05) alerts.push(`${lot.name} : mortalité élevée (${Math.round(lot.deaths / lot.initial_count * 100)}%)`);
+      if (lot.kind === 'pondeuse' && lot.current_count > 0 && lot.eggs_produced === 0) alerts.push(`${lot.name} : aucune ponte enregistrée`);
+      return alerts;
+    })));
 
     getMoutons().then(moutons => {
       const races: Record<string, number> = {};
@@ -148,6 +157,12 @@ export function Dashboard() {
           ))}
           {alerts.length > 2 && <p className="text-xs text-orange-500 dark:text-orange-400 mt-1">+{alerts.length - 2} autres…</p>}
         </button>
+      )}
+      {poultryAlerts.length > 0 && (
+        <div className="card border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+          <div className="flex items-center gap-2 mb-2"><AlertTriangle size={18} className="text-amber-600" /><h3 className="font-semibold text-amber-800 dark:text-amber-200">Alertes volailles</h3></div>
+          {poultryAlerts.map(alert => <p key={alert} className="text-sm text-amber-700 dark:text-amber-300">{alert}</p>)}
+        </div>
       )}
 
       {/* Bloc Troupeau */}

@@ -4,7 +4,9 @@ import { Role } from '../types';
 export interface Permissions {
   role: Role;
   canAdd: boolean;
+  canRecord: boolean;
   canEdit: boolean;
+  canModify: boolean;
   canDelete: boolean;
   canSell: boolean;
   canViewStats: boolean;
@@ -12,6 +14,7 @@ export interface Permissions {
   canManageUsers: boolean;
   canResetData: boolean;
   canSettings: boolean;
+  canAccessFinance: boolean;
   isAdmin: boolean;
   isGerant: boolean;
   isEmploye: boolean;
@@ -19,19 +22,19 @@ export interface Permissions {
 
 const PERMS: Record<Role, Omit<Permissions, 'role' | 'isAdmin' | 'isGerant' | 'isEmploye'>> = {
   admin: {
-    canAdd: true, canEdit: true, canDelete: true,
+    canAdd: true, canRecord: true, canEdit: true, canModify: true, canDelete: true,
     canSell: true, canViewStats: true, canExport: true,
-    canManageUsers: true, canResetData: true, canSettings: true,
+    canManageUsers: true, canResetData: true, canSettings: true, canAccessFinance: true,
   },
   gerant: {
-    canAdd: true, canEdit: true, canDelete: true,
+    canAdd: true, canRecord: true, canEdit: true, canModify: true, canDelete: true,
     canSell: true, canViewStats: true, canExport: true,
-    canManageUsers: false, canResetData: false, canSettings: false,
+    canManageUsers: false, canResetData: false, canSettings: false, canAccessFinance: true,
   },
   employe: {
-    canAdd: true, canEdit: true, canDelete: false,
+    canAdd: true, canRecord: true, canEdit: true, canModify: true, canDelete: false,
     canSell: false, canViewStats: false, canExport: false,
-    canManageUsers: false, canResetData: false, canSettings: false,
+    canManageUsers: false, canResetData: false, canSettings: false, canAccessFinance: false,
   },
 };
 

@@ -11,7 +11,7 @@ import { getMoutons } from '../../services/moutonService';
 import { getHealthRecords } from '../../services/healthService';
 import { getExpenses } from '../../services/expenseService';
 import { downloadJSON, downloadPDF } from '../../utils/exportUtils';
-import { restoreFromBackup, isValidBackup } from '../../services/backupService';
+import { exportBackupData, restoreFromBackup, isValidBackup } from '../../services/backupService';
 import { TARGET_LABELS } from '../sales/SalesList';
 import { run, saveStore } from '../../db/DatabaseService';
 import { setSetting } from '../../services/userService';
@@ -54,11 +54,9 @@ export function SettingsPage() {
 
   const handleExportJSON = async () => {
     setExporting(true);
-    const [moutons, sales, health, expenses] = await Promise.all([
-      getMoutons(), getSales(), getHealthRecords(), getExpenses(),
-    ]);
+    const backup = await exportBackupData();
     downloadJSON(
-      { exportedAt: new Date().toISOString(), farmName, moutons, sales, health, expenses },
+      { exportedAt: new Date().toISOString(), farmName, ...backup },
       `mon-troupeau-${new Date().toISOString().split('T')[0]}.json`
     );
     await logActivity(currentUser?.id, currentUser?.name ?? '', 'Export JSON');

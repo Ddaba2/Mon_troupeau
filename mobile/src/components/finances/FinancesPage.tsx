@@ -3,12 +3,14 @@ import { Wallet, TrendingUp, TrendingDown, Table2 } from 'lucide-react';
 import { SalesList } from '../sales/SalesList';
 import { ExpensesList } from '../expenses/ExpensesList';
 import { FinancialSummary } from './FinancialSummary';
+import { usePermissions } from '../../hooks/usePermissions';
 
 type FinanceTab = 'recettes' | 'depenses' | 'tableau';
 
 interface Props { initialTab?: FinanceTab }
 
 export function FinancesPage({ initialTab }: Props) {
+  const { canAccessFinance } = usePermissions();
   const [tab, setTab] = useState<FinanceTab>(initialTab ?? 'recettes');
 
   const TABS: { id: FinanceTab; label: string; icon: React.ElementType }[] = [
@@ -16,6 +18,10 @@ export function FinancesPage({ initialTab }: Props) {
     { id: 'depenses', label: 'Dépenses', icon: TrendingDown },
     { id: 'tableau',  label: 'Tableau',  icon: Table2 },
   ];
+
+  if (!canAccessFinance) {
+    return <div className="flex min-h-[60vh] items-center justify-center p-8 text-center text-gray-500">Accès aux finances réservé aux Gérants et Administrateurs</div>;
+  }
 
   return (
     <div>

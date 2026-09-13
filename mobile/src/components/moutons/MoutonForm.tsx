@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Save, Camera, Trash2 } from 'lucide-react';
-import { Mouton, Species } from '../../types';
+import { Mouton, PoultryKind, Species } from '../../types';
 import { createMouton, updateMouton } from '../../services/moutonService';
+import { createSale, getSales, updateSale } from '../../services/saleService';
 import { logActivity } from '../../services/activityService';
+import { addWeightRecord } from '../../services/weightService';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { compressImage } from '../../utils/imageUtils';
@@ -10,9 +12,9 @@ import { SPECIES_LABELS, SPECIES_EMOJIS } from '../../utils/species';
 
 const SPECIES_OPTIONS: Species[] = ['mouton', 'chevre', 'bovin', 'volaille', 'autre'];
 
-interface Props { mouton?: Mouton; onSave: () => void; onCancel: () => void }
+interface Props { mouton?: Mouton; onSave: () => void; onCancel: () => void; onPoultryLot: (kind: 'chair' | 'pondeuse') => void }
 
-export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
+export function MoutonForm({ mouton: m, onSave, onCancel, onPoultryLot }: Props) {
   const { currentUser } = useAuth();
   const { simplified } = useApp();
   const today = new Date().toISOString().split('T')[0];
@@ -20,9 +22,12 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
     identification_number: m?.identification_number ?? '',
     name:                  m?.name                  ?? '',
     species:               m?.species               ?? 'mouton' as Species,
+    poultry_kind:          m?.poultry_kind,
     race:                  m?.race                  ?? '',
     sex:                   m?.sex                    ?? 'inconnu',
     birth_date:            m?.birth_date             ?? '',
+    acquisition_date:     m?.acquisition_date      ?? '',
+    weight_kg:             m?.weight_kg?.toString() ?? '',
     estimated_age_months:  m?.estimated_age_months?.toString() ?? '',
     color:                 m?.color                 ?? '',
     origin:                m?.origin                ?? 'nee_ferme',
@@ -63,6 +68,29 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
     input.click();
   };
 
+  if (!m && form.species === 'volaille' && !form.poultry_kind) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={onCancel} className="p-2 -ml-2 text-gray-500"><ArrowLeft size={24} /></button>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Nouvelle volaille</h2>
+        </div>
+        <div className="card space-y-3">
+          <p className="font-semibold text-gray-800 dark:text-gray-100">Quel type de volaille souhaitez-vous ajouter ?</p>
+          {([
+            { kind: 'reproducteur' as const, label: 'Poulet reproducteur', icon: '🐔' },
+            { kind: 'chair' as const, label: 'Poulet de chair', icon: '🍗' },
+            { kind: 'pondeuse' as const, label: 'Poule pondeuse', icon: '🥚' },
+          ]).map(option => (
+            <button key={option.kind} type="button" onClick={() => option.kind === 'reproducteur' ? setForm(f => ({ ...f, poultry_kind: option.kind })) : onPoultryLot(option.kind)} className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-left font-medium">
+              <span className="text-2xl">{option.icon}</span>{option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const handleSave = async () => {
     if (!form.identification_number.trim()) { setError("Le numéro d'identification est obligatoire"); return; }
     setSaving(true);
@@ -74,6 +102,8 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
       race: form.race.trim() || undefined,
       color: form.color.trim() || undefined,
       birth_date: form.birth_date || undefined,
+      acquisition_date: form.acquisition_date || undefined,
+      weight_kg: form.weight_kg ? Number(form.weight_kg) : undefined,
       estimated_age_months: form.estimated_age_months ? Number(form.estimated_age_months) : undefined,
       purchase_price: form.origin === 'achete' && form.purchase_price ? Number(form.purchase_price) : undefined,
       sale_price: form.sale_price ? Number(form.sale_price) : undefined,
@@ -84,12 +114,42 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
     } as Mouton;
     try {
       const label = `#${payload.identification_number}${payload.name ? ` – ${payload.name}` : ''}`;
+      let moutonId = m?.id;
       if (m?.id) {
         await updateMouton(m.id, payload);
         await logActivity(currentUser?.id, currentUser?.name ?? '', `Animal modifié : ${label}`, 'mouton', m.id, payload.species);
       } else {
-        const newId = await createMouton(payload);
-        await logActivity(currentUser?.id, currentUser?.name ?? '', `Nouvel animal ajouté : ${label}`, 'mouton', newId, payload.species);
+        moutonId = await createMouton(payload);
+        await logActivity(currentUser?.id, currentUser?.name ?? '', `Nouvel animal ajouté : ${label}`, 'mouton', moutonId, payload.species);
+      }
+
+      // Une vente saisie dans la fiche animal doit aussi apparaître dans Finances.
+      if (payload.status === 'vendu' && moutonId) {
+        const existingSale = (await getSales()).find(
+          sale => sale.target_type === 'mouton' && sale.target_id === moutonId,
+        );
+        const saleData = {
+          target_type: 'mouton' as const,
+          target_id: moutonId,
+          date: payload.sale_date ?? today,
+          quantity: 1,
+          unit_price: payload.sale_price ?? 0,
+          buyer_name: payload.buyer_name,
+          payment_method: 'especes' as const,
+        };
+        if (existingSale?.id) {
+          await updateSale(existingSale.id, saleData);
+        } else {
+          await createSale(saleData);
+        }
+      }
+      if (moutonId && payload.weight_kg != null) {
+        await addWeightRecord({
+          mouton_id: moutonId,
+          date: today,
+          weight_kg: payload.weight_kg,
+          user_id: currentUser?.id,
+        });
       }
       onSave();
     } catch (e: any) {
@@ -150,7 +210,7 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Espèce</span>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {SPECIES_OPTIONS.map(sp => (
-              <button key={sp} type="button" onClick={() => setForm(f => ({ ...f, species: sp }))}
+              <button key={sp} type="button" onClick={() => setForm(f => ({ ...f, species: sp, poultry_kind: sp === 'volaille' ? f.poultry_kind : undefined }))}
                 className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   form.species === sp ? 'bg-primary-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
                 }`}>
@@ -159,6 +219,30 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
             ))}
           </div>
         </div>
+
+        {form.species === 'volaille' && (
+          <div className="card space-y-3">
+            <p className="font-semibold text-gray-800 dark:text-gray-100">Quel type de volaille souhaitez-vous ajouter ?</p>
+            <div className="grid gap-2">
+              {([
+                { kind: 'reproducteur', label: 'Poulet reproducteur', icon: '🐔' },
+                { kind: 'chair', label: 'Poulet de chair', icon: '🍗' },
+                { kind: 'pondeuse', label: 'Poule pondeuse', icon: '🥚' },
+              ] as { kind: PoultryKind; label: string; icon: string }[]).map(option => (
+                <button
+                  key={option.kind}
+                  type="button"
+                  onClick={() => option.kind === 'reproducteur'
+                    ? setForm(f => ({ ...f, poultry_kind: option.kind }))
+                    : onPoultryLot(option.kind)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-left font-medium ${form.poultry_kind === option.kind ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200'}`}
+                >
+                  <span className="text-2xl">{option.icon}</span>{option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
@@ -192,6 +276,13 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
             <input className="input mt-1" type="date" value={form.birth_date} onChange={set('birth_date')} />
           </label>
           <label className="block">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Date d'acquisition</span>
+            <input className="input mt-1" type="date" value={form.acquisition_date} onChange={set('acquisition_date')} />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Âge estimé (mois)</span>
             <input
               className="input mt-1"
@@ -202,6 +293,10 @@ export function MoutonForm({ mouton: m, onSave, onCancel }: Props) {
               placeholder="si naissance inconnue"
               disabled={!!form.birth_date}
             />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Poids (kg)</span>
+            <input className="input mt-1" type="number" min="0" step="0.01" value={form.weight_kg} onChange={set('weight_kg')} placeholder="ex: 2,5" />
           </label>
         </div>
 

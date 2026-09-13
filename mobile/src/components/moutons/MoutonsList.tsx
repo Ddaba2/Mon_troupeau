@@ -4,6 +4,7 @@ import { Mouton, Species } from '../../types';
 import { getMoutons, trashMouton } from '../../services/moutonService';
 import { MoutonForm } from './MoutonForm';
 import { MoutonHistory } from './MoutonHistory';
+import { PoultryPage } from './PoultryPage';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -60,6 +61,8 @@ export function MoutonsList() {
   const [editing, setEditing]         = useState<Mouton | null>(null);
   const [showForm, setShowForm]       = useState(false);
   const [viewHistory, setViewHistory] = useState<Mouton | null>(null);
+  const [showPoultry, setShowPoultry] = useState(false);
+  const [poultryLotKind, setPoultryLotKind] = useState<'chair' | 'pondeuse' | undefined>();
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('tous');
   const [ageFilter, setAgeFilter]     = useState<AgeFilter>('tous');
@@ -126,8 +129,11 @@ export function MoutonsList() {
   if (viewHistory) {
     return <MoutonHistory mouton={viewHistory} onBack={() => setViewHistory(null)} />;
   }
+  if (showPoultry) {
+    return <PoultryPage initialKind={poultryLotKind} onBack={() => { setShowPoultry(false); setPoultryLotKind(undefined); }} />;
+  }
   if (showForm || editing) {
-    return <MoutonForm mouton={editing ?? undefined} onSave={handleSaved} onCancel={() => { setShowForm(false); setEditing(null); }} />;
+    return <MoutonForm mouton={editing ?? undefined} onSave={handleSaved} onPoultryLot={kind => { setPoultryLotKind(kind); setShowPoultry(true); setShowForm(false); }} onCancel={() => { setShowForm(false); setEditing(null); }} />;
   }
 
   return (

@@ -28,11 +28,11 @@ export async function getMoutonByIdAny(id: number): Promise<Mouton | null> {
 export async function createMouton(m: Omit<Mouton, 'id'>): Promise<number> {
   const { lastId } = await run(
     `INSERT INTO moutons
-     (identification_number, name, photo, species, race, sex, birth_date, estimated_age_months, color, origin, purchase_price, status, observations)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    (identification_number, name, photo, species, poultry_kind, race, sex, birth_date, acquisition_date, weight_kg, estimated_age_months, color, origin, purchase_price, status, observations)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      m.identification_number, m.name || null, m.photo || null, m.species, m.race || null, m.sex,
-      m.birth_date || null, m.estimated_age_months ?? null, m.color || null,
+      m.identification_number, m.name || null, m.photo || null, m.species, m.poultry_kind || null, m.race || null, m.sex,
+      m.birth_date || null, m.acquisition_date || null, m.weight_kg ?? null, m.estimated_age_months ?? null, m.color || null,
       m.origin, m.purchase_price ?? null, m.status, m.observations || null,
     ],
   );
@@ -44,7 +44,7 @@ export async function updateMouton(id: number, m: Partial<Mouton>): Promise<void
   const existing = await getMoutonById(id);
   const base = existing ?? {} as Mouton;
   await run(
-    `UPDATE moutons SET identification_number=?, name=?, photo=?, species=?, race=?, sex=?, birth_date=?,
+    `UPDATE moutons SET identification_number=?, name=?, photo=?, species=?, poultry_kind=?, race=?, sex=?, birth_date=?, acquisition_date=?, weight_kg=?,
      estimated_age_months=?, color=?, origin=?, purchase_price=?, status=?, sale_price=?, sale_date=?, buyer_name=?,
      observations=?, updated_at=datetime('now'), synced=0
      WHERE id=?`,
@@ -53,9 +53,12 @@ export async function updateMouton(id: number, m: Partial<Mouton>): Promise<void
       m.name ?? base.name ?? null,
       m.photo ?? base.photo ?? null,
       m.species ?? base.species ?? 'mouton',
+      m.poultry_kind ?? base.poultry_kind ?? null,
       m.race ?? base.race ?? null,
       m.sex ?? base.sex,
       m.birth_date ?? base.birth_date ?? null,
+      m.acquisition_date ?? base.acquisition_date ?? null,
+      m.weight_kg ?? base.weight_kg ?? null,
       m.estimated_age_months ?? base.estimated_age_months ?? null,
       m.color ?? base.color ?? null,
       m.origin ?? base.origin,

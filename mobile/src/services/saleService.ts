@@ -3,8 +3,9 @@ import { Sale } from '../types';
 
 export async function getSales(): Promise<Sale[]> {
   return query<Sale>(
-    `SELECT s.*, m.identification_number as target_label
+    `SELECT s.*, COALESCE(m.identification_number, p.name) as target_label
      FROM sales s LEFT JOIN moutons m ON s.target_type = 'mouton' AND s.target_id = m.id
+     LEFT JOIN poultry_lots p ON s.target_type IN ('volaille', 'oeuf') AND s.target_id = p.id
      WHERE s.deleted_at IS NULL
      ORDER BY s.date DESC`,
   );
@@ -19,8 +20,9 @@ export async function getTotalRevenue(): Promise<number> {
 
 export async function getTrashedSales(): Promise<Sale[]> {
   return query<Sale>(
-    `SELECT s.*, m.identification_number as target_label
+    `SELECT s.*, COALESCE(m.identification_number, p.name) as target_label
      FROM sales s LEFT JOIN moutons m ON s.target_type = 'mouton' AND s.target_id = m.id
+     LEFT JOIN poultry_lots p ON s.target_type IN ('volaille', 'oeuf') AND s.target_id = p.id
      WHERE s.deleted_at IS NOT NULL
      ORDER BY s.deleted_at DESC`,
   );

@@ -16,6 +16,13 @@ export async function getExpensesByPeriod(from: string, to: string): Promise<Exp
   );
 }
 
+export async function getExpensesForTarget(targetType: Expense['target_type'], targetId: number): Promise<Expense[]> {
+  return query<Expense>(
+    'SELECT * FROM expenses WHERE deleted_at IS NULL AND target_type = ? AND target_id = ? ORDER BY date DESC',
+    [targetType, targetId],
+  );
+}
+
 export async function getTotalExpenses(): Promise<number> {
   const rows = await query<{ total: number }>(
     'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE deleted_at IS NULL',
@@ -25,9 +32,9 @@ export async function getTotalExpenses(): Promise<number> {
 
 export async function createExpense(e: Omit<Expense, 'id'>): Promise<number> {
   const { lastId } = await run(
-    `INSERT INTO expenses (category, date, amount, description, payment_method, notes)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [e.category, e.date, e.amount, e.description || null, e.payment_method, e.notes || null],
+    `INSERT INTO expenses (category, date, amount, description, payment_method, notes, target_type, target_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [e.category, e.date, e.amount, e.description || null, e.payment_method, e.notes || null, e.target_type || null, e.target_id ?? null],
   );
   await saveStore();
   return lastId;
@@ -37,7 +44,7 @@ export async function updateExpense(id: number, e: Partial<Expense>): Promise<vo
   const existing = await query<Expense>('SELECT * FROM expenses WHERE id = ?', [id]);
   const base = existing[0] ?? {} as Expense;
   await run(
-    `UPDATE expenses SET category=?, date=?, amount=?, description=?, payment_method=?, notes=?, synced=0
+    `UPDATE expenses SET category=?, date=?, amount=?, description=?, payment_method=?, notes=?, target_type=?, target_id=?, synced=0
      WHERE id=?`,
     [
       e.category       ?? base.category,
@@ -46,6 +53,8 @@ export async function updateExpense(id: number, e: Partial<Expense>): Promise<vo
       e.description    ?? base.description    ?? null,
       e.payment_method ?? base.payment_method,
       e.notes          ?? base.notes          ?? null,
+      e.target_type    ?? base.target_type   ?? null,
+      e.target_id      ?? base.target_id     ?? null,
       id,
     ],
   );

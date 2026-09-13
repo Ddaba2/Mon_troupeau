@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Info, Heart, Wallet, ListTree } from 'lucide-react';
-import { Mouton, HealthRecord, Sale } from '../../types';
+import { ArrowLeft, Info, Heart, Wallet, ListTree, Scale, Save } from 'lucide-react';
+import { Mouton, HealthRecord, Sale, WeightRecord } from '../../types';
 import { getHealthRecords } from '../../services/healthService';
 import { getSales } from '../../services/saleService';
 import { SEX_LABELS, ORIGIN_LABELS, STATUS_LABELS, STATUS_COLORS, formatAge } from './MoutonsList';
 import { computeMoutonProfitability } from '../../utils/profitability';
 import { SPECIES_LABELS, SPECIES_EMOJIS } from '../../utils/species';
+import { addWeightRecord, getWeightRecords } from '../../services/weightService';
+import { useAuth } from '../../context/AuthContext';
+import { getExpensesForTarget } from '../../services/expenseService';
 
 interface Props { mouton: Mouton; onBack: () => void }
 
-type Tab = 'infos' | 'sante' | 'finances' | 'historique';
+type Tab = 'infos' | 'poids' | 'sante' | 'finances' | 'historique';
 
 const TYPE_LABELS: Record<string, string> = {
   vaccination:  '💉 Vaccination',
@@ -26,20 +29,29 @@ export function MoutonHistory({ mouton, onBack }: Props) {
   const [health, setHealth]   = useState<HealthRecord[]>([]);
   const [sales, setSales]     = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weights, setWeights] = useState<WeightRecord[]>([]);
+  const [expenses, setExpenses] = useState<{ amount: number; date: string; description?: string }[]>([]);
+  const [newWeight, setNewWeight] = useState('');
+  const [weightDate, setWeightDate] = useState(new Date().toISOString().split('T')[0]);
+  const [weightError, setWeightError] = useState('');
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [allHealth, allSales] = await Promise.all([getHealthRecords(), getSales()]);
+      const [allHealth, allSales, allWeights, targetExpenses] = await Promise.all([getHealthRecords(), getSales(), getWeightRecords(mouton.id!), getExpensesForTarget('mouton', mouton.id!)]);
       const mid = mouton.id!;
       setHealth(allHealth.filter(h => h.target_type === 'tous' || (h.target_type === 'mouton' && h.target_id === mid)));
       setSales(allSales.filter(s => s.target_type === 'mouton' && s.target_id === mid));
+      setWeights(allWeights);
+      setExpenses(targetExpenses);
       setLoading(false);
     })();
   }, [mouton.id]);
 
   const TABS: { id: Tab; label: string; icon: React.ElementType; count?: number }[] = [
     { id: 'infos',      label: 'Infos',      icon: Info },
+    { id: 'poids',      label: 'Poids',      icon: Scale,    count: weights.length },
     { id: 'sante',      label: 'Santé',      icon: Heart,    count: health.length },
     { id: 'finances',   label: 'Finances',   icon: Wallet,   count: sales.length },
     { id: 'historique', label: 'Historique', icon: ListTree, count: health.length + sales.length },
@@ -166,6 +178,47 @@ export function MoutonHistory({ mouton, onBack }: Props) {
             </div>
           )}
 
+          {tab === 'poids' && (
+            <div className="space-y-3">
+              <div className="card space-y-3">
+                <h3 className="font-semibold">Ajouter une pesée</h3>
+                {weightError && <p className="text-sm text-red-600">{weightError}</p>}
+                <div className="grid grid-cols-2 gap-2">
+                  <input className="input" type="date" value={weightDate} onChange={e => setWeightDate(e.target.value)} />
+                  <input className="input" type="number" min="0.01" step="0.01" placeholder="Poids en kg" value={newWeight} onChange={e => setNewWeight(e.target.value)} />
+                </div>
+                <button
+                  className="btn-primary"
+                  onClick={async () => {
+                    try {
+                      const weight = Number(newWeight);
+                      if (!weight || weight <= 0) throw new Error('Saisissez un poids supérieur à zéro');
+                      await addWeightRecord({ mouton_id: mouton.id!, date: weightDate, weight_kg: weight, user_id: currentUser?.id });
+                      setWeights(await getWeightRecords(mouton.id!));
+                      setNewWeight('');
+                      setWeightError('');
+                    } catch (error: any) {
+                      setWeightError(error.message);
+                    }
+                  }}
+                >
+                  <Save size={18} /> Enregistrer la pesée
+                </button>
+              </div>
+              {weights.length === 0 ? <p className="text-center py-8 text-gray-400">Aucune pesée enregistrée</p> : (
+                <div className="space-y-2">
+                  {weights.map((weight, index) => (
+                    <div key={weight.id} className="card flex items-center justify-between">
+                      <span className="text-sm text-gray-500">{new Date(weight.date).toLocaleDateString('fr-FR')}</span>
+                      <strong className="text-lg text-primary-600">{weight.weight_kg.toLocaleString('fr-FR')} kg</strong>
+                      {index < weights.length - 1 && <span className="text-xs text-gray-400">{(weight.weight_kg - weights[index + 1].weight_kg >= 0 ? '+' : '')}{(weight.weight_kg - weights[index + 1].weight_kg).toFixed(2)} kg</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* SANTÉ */}
           {tab === 'sante' && (
             health.length === 0 ? (
@@ -194,6 +247,7 @@ export function MoutonHistory({ mouton, onBack }: Props) {
           {/* FINANCES */}
           {tab === 'finances' && (() => {
             const profit = computeMoutonProfitability(mouton, health, sales);
+            const linkedExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
             return (
               <div className="space-y-3">
                 <div className="card">
@@ -207,7 +261,7 @@ export function MoutonHistory({ mouton, onBack }: Props) {
                     )}
                     <div className="flex justify-between">
                       <span className="text-gray-500 dark:text-gray-400">Coûts sanitaires (individuels)</span>
-                      <span className="text-gray-800 dark:text-gray-100">− {profit.healthCost.toLocaleString('fr-FR')} FCFA</span>
+                      <span className="text-gray-800 dark:text-gray-100">− {(profit.healthCost + linkedExpenses).toLocaleString('fr-FR')} FCFA</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500 dark:text-gray-400">Revenus des ventes</span>
@@ -217,7 +271,7 @@ export function MoutonHistory({ mouton, onBack }: Props) {
                   <div className={`mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center`}>
                     <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Marge nette</span>
                     <span className={`text-lg font-bold ${profit.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {profit.margin.toLocaleString('fr-FR')} FCFA
+                      {(profit.margin - linkedExpenses).toLocaleString('fr-FR')} FCFA
                     </span>
                   </div>
                   {profit.healthCost > 0 && health.some(h => h.target_type === 'tous') && (
